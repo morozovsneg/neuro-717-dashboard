@@ -44,12 +44,14 @@
     const selected=$('date-select').value, n=$('window-select').value;
     const eligible=dates.filter(d=>d<=selected), windowDates=n==='all'?eligible:eligible.slice(-Number(n));
     const snapshots=list(data,'snapshots'), current=snapshots.find(s=>s.date===selected) || {};
-    const points=windowDates.map(d=>({date:d,views:snapshots.find(s=>s.date===d)?.views}));
-    const valid=points.filter(p=>number(p.views)!==null), best=valid.reduce((a,b)=>!a||b.views>a.views?b:a,null);
+    const genre=$('genre-select').value, groups=list(data,'genres');
+    const overall=windowDates.map(d=>({date:d,views:snapshots.find(s=>s.date===d)?.views}));
+    const points=windowDates.map(d=>{const group=groups.find(g=>g.date===d && g.name===genre);return {date:d,views:genre?(group?group.views:0):snapshots.find(s=>s.date===d)?.views}});
+    const valid=overall.filter(p=>number(p.views)!==null), best=valid.reduce((a,b)=>!a||b.views>a.views?b:a,null);
     $('selected-label').textContent=`На ${date(selected)} · показатели за предыдущие 30 дней`;
     $('metrics').innerHTML=metric('Просмотры',current.views,'за 30 дней')+metric('Видео',current.videos,'в срезе')+metric('Shorts',current.shorts,'в срезе')+metric('Лайки',current.likes,'за 30 дней')+metric('Комментарии',current.comments,'за 30 дней');
     $('chart').innerHTML=chart(points);
-    const previous=points.length>1?points[points.length-2]:null;
+    const previous=overall.length>1?overall[overall.length-2]:null;
     let comparison='Недостаточно данных для сравнения';
     if(previous && number(previous.views)!==null && number(current.views)!==null){const diff=current.views-previous.views; comparison=`${diff>0?'+':''}${value(diff)} к предыдущему срезу`;}
     const errors=Array.isArray(current.channel_errors)?current.channel_errors.length:number(current.channel_errors);
@@ -68,7 +70,9 @@
       if(!dates.length){$('notice').textContent='Нет доступных дат срезов. Проверьте содержимое data.json.';return;}
       $('date-select').innerHTML=dates.slice().reverse().map(d=>`<option value="${d}">${esc(date(d))}</option>`).join('');
       $('date-select').disabled=false;$('window-select').disabled=false;$('notice').hidden=true;$('dashboard').hidden=false;
-      $('date-select').addEventListener('change',render);$('window-select').addEventListener('change',render);render();
+      const genres=[...new Set(list(data,'genres').map(g=>g.name).filter(x=>typeof x==='string' && x.trim()))].sort();
+      $('genre-select').innerHTML='<option value="">Все тематики</option>'+genres.map(g=>`<option value="${esc(g)}">${esc(g)}</option>`).join('');
+      $('date-select').addEventListener('change',render);$('window-select').addEventListener('change',render);$('genre-select').addEventListener('change',render);render();
     } catch(e) {
       $('freshness').textContent='Данные не загружены';
       $('notice').classList.add('error');
